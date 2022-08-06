@@ -172,39 +172,7 @@ func QueryPortChannel(ctx context.Context, src *Chain, portID string) (*chantype
 		portID, src.ChainID(), src.ClientID(), src.ConnectionID(), sb.String())
 }
 
-// QueryIBCUpdateHeaders returns a pair of IBC update headers which can be used to update an on chain light client
-func QueryIBCUpdateHeaders(
-	ctx context.Context,
-	srcClientID, dstClientID string,
-	src, dst provider.ChainProvider,
-	srch, dsth int64,
-	srcTrustedH, dstTrustedH int64,
-) (srcHeader, dstHeader, srcTrustedHeader, dstTrustedHeader provider.IBCHeader, err error) {
-	eg, egCtx := errgroup.WithContext(ctx)
-	eg.Go(func() error {
-		var err error
-		srcHeader, err = src.QueryIBCHeader(egCtx, srch)
-		return err
-	})
-	eg.Go(func() error {
-		var err error
-		dstHeader, err = dst.QueryIBCHeader(egCtx, dsth)
-		return err
-	})
-	eg.Go(func() error {
-		var err error
-		srcTrustedHeader, err = src.QueryIBCHeader(egCtx, srcTrustedH+1)
-		return err
-	})
-	eg.Go(func() error {
-		var err error
-		dstTrustedHeader, err = dst.QueryIBCHeader(egCtx, dstTrustedH+1)
-		return err
-	})
-	err = eg.Wait()
-	return
-}
-
+// QueryIBCHeaders queries multiple IBC Headers at requested heights for two chains in parallel.
 func QueryIBCHeaders(ctx context.Context, src, dst *Chain, srch, dsth int64) (srcUpdateHeader, dstUpdateHeader provider.IBCHeader, err error) {
 	eg, egCtx := errgroup.WithContext(ctx)
 	eg.Go(func() error {

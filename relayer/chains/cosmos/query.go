@@ -40,11 +40,11 @@ func (cc *CosmosProvider) queryIBCMessages(ctx context.Context, log *zap.Logger,
 	}
 
 	if page <= 0 {
-		return nil, errors.New("page must greater than 0")
+		return nil, errors.New("page must be greater than 0")
 	}
 
 	if limit <= 0 {
-		return nil, errors.New("limit must greater than 0")
+		return nil, errors.New("limit must be greater than 0")
 	}
 
 	res, err := cc.RPCClient.TxSearch(ctx, strings.Join(events, " AND "), true, &page, &limit, "")
@@ -94,11 +94,11 @@ func (cc *CosmosProvider) QueryTxs(ctx context.Context, page, limit int, events 
 	}
 
 	if page <= 0 {
-		return nil, errors.New("page must greater than 0")
+		return nil, errors.New("page must be greater than 0")
 	}
 
 	if limit <= 0 {
-		return nil, errors.New("limit must greater than 0")
+		return nil, errors.New("limit must be greater than 0")
 	}
 
 	res, err := cc.RPCClient.TxSearch(ctx, strings.Join(events, " AND "), true, &page, &limit, "")

@@ -23,7 +23,6 @@ import (
 	tmclient "github.com/cosmos/ibc-go/v4/modules/light-clients/07-tendermint/types"
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"github.com/tendermint/tendermint/light"
-	tmtypes "github.com/tendermint/tendermint/types"
 	"go.uber.org/zap"
 )
 
@@ -954,61 +953,6 @@ func (cc *CosmosProvider) QueryIBCHeader(ctx context.Context, h int64) (provider
 		SignedHeader: lightBlock.SignedHeader,
 		ValidatorSet: lightBlock.ValidatorSet,
 	}, nil
-}
-
-// InjectTrustedFields injects the necessary trusted fields for a header to update a light
-// client stored on the destination chain, using the information provided by the source
-// chain.
-// TrustedHeight is the latest height of the IBC client on dst
-// TrustedValidators is the validator set of srcChain at the TrustedHeight
-// InjectTrustedFields returns a copy of the header with TrustedFields modified
-func (cc *CosmosProvider) InjectTrustedFields(ctx context.Context, header ibcexported.Header, dst provider.ChainProvider, dstClientId string) (ibcexported.Header, error) {
-	// make copy of header stored in mop
-	h, ok := header.(*tmclient.Header)
-	if !ok {
-		return nil, fmt.Errorf("trying to inject fields into non-tendermint headers")
-	}
-
-	// retrieve dst client from src chain
-	// this is the client that will be updated
-	cs, err := dst.QueryClientState(ctx, int64(h.TrustedHeight.RevisionHeight), dstClientId)
-	if err != nil {
-		return nil, err
-	}
-
-	// inject TrustedHeight as latest height stored on dst client
-	h.TrustedHeight = cs.GetLatestHeight().(clienttypes.Height)
-
-	// NOTE: We need to get validators from the source chain at height: trustedHeight+1
-	// since the last trusted validators for a header at height h is the NextValidators
-	// at h+1 committed to in header h by NextValidatorsHash
-
-	// TODO: this is likely a source of off by 1 errors but may be impossible to change? Maybe this is the
-	// place where we need to fix the upstream query proof issue?
-	var trustedValidators *tmtypes.ValidatorSet
-	if err := retry.Do(func() error {
-		ibcHeader, err := cc.QueryIBCHeader(ctx, int64(h.TrustedHeight.RevisionHeight+1))
-		if err != nil {
-			return err
-		}
-
-		trustedValidators = ibcHeader.(CosmosIBCHeader).ValidatorSet
-		return err
-	}, retry.Context(ctx), rtyAtt, rtyDel, rtyErr); err != nil {
-		return nil, fmt.Errorf(
-			"failed to get trusted header, please ensure header at the height %d has not been pruned by the connected node: %w",
-			h.TrustedHeight.RevisionHeight, err,
-		)
-	}
-
-	tvProto, err := trustedValidators.ToProto()
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert trusted validators to proto: %w", err)
-	}
-
-	// inject TrustedValidators into header
-	h.TrustedValidators = tvProto
-	return h, nil
 }
 
 // queryTMClientState retrieves the latest consensus state for a client in state at a given height
